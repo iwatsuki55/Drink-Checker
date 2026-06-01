@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIGHTCAP — 怒らへん晩酌＆体重ログ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #16120e;
+    --bg-grain: #1d1813;
+    --surface: #221c16;
+    --surface-2: #2b231b;
+    --line: #3a2f24;
+    --amber: #e6a23c;
+    --amber-soft: #f0c987;
+    --teal: #5a8f8a;
+    --text: #f3e9da;
+    --text-dim: #b3a491;
+    --text-faint: #7d7163;
+    --shadow: rgba(0,0,0,0.45);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(230,162,60,0.10), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 110%, rgba(90,143,138,0.08), transparent 55%);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
+
+  /* Header */
+  header { padding: 52px 0 34px; text-align: center; animation: fade .8s ease both; }
+  .kicker {
+    font-size: 11px; letter-spacing: 0.42em; text-transform: uppercase;
+    color: var(--amber); font-weight: 500; margin-bottom: 14px; padding-left: 0.42em;
+  }
+  h1 {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: clamp(48px, 13vw, 86px);
+    letter-spacing: -0.02em; line-height: 0.92; color: var(--text);
+    text-shadow: 0 2px 30px rgba(230,162,60,0.15);
+  }
+  h1 .dot { color: var(--amber); }
+  .tagline {
+    font-family: 'Fraunces', serif; font-style: italic; font-size: clamp(15px, 4vw, 19px);
+    color: var(--text-dim); margin-top: 16px; font-weight: 400;
+  }
+  .creed {
+    font-size: 12.5px; color: var(--text-faint); margin-top: 10px; letter-spacing: 0.02em;
+  }
+
+  /* Cards */
+  .card {
+    background: linear-gradient(160deg, var(--surface), var(--bg-grain));
+    border: 1px solid var(--line); border-radius: 18px;
+    padding: 26px 24px; margin-bottom: 22px;
+    box-shadow: 0 18px 40px -24px var(--shadow);
+    animation: rise .7s ease both;
+  }
+  .card-label {
+    font-size: 11px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .card-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  /* Form */
+  .row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+  .field { flex: 1; min-width: 130px; }
+  .field label {
+    display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 7px; letter-spacing: 0.04em;
+  }
+  input[type="date"], input[type="number"], input[type="text"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 11px; padding: 12px 14px; color: var(--text);
+    font-family: inherit; font-size: 15px; transition: border-color .2s, box-shadow .2s;
+  }
+  input:focus {
+    outline: none; border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(230,162,60,0.13);
+  }
+  input::-webkit-calendar-picker-indicator { filter: invert(0.7) sepia(1) hue-rotate(2deg) saturate(3); cursor: pointer; }
+
+  /* Drinks */
+  .drinks-label { font-size: 12px; color: var(--text-dim); margin-bottom: 11px; letter-spacing: 0.04em; }
+  .drinks { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 11px; }
+  .drink {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 13px;
+    padding: 12px 13px;
+    transition: border-color .2s, background .2s;
+  }
+  .drink .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .drink.brew.active { border-color: var(--amber); background: rgba(230,162,60,0.06); }
+  .drink.dist.active { border-color: var(--teal); background: rgba(90,143,138,0.06); }
+  .drink .kcal { font-size: 10.5px; color: var(--text-faint); margin-top: 7px; }
+  .badge { font-size: 9.5px; padding: 1px 6px; border-radius: 20px; margin-left: 7px; border: 1px solid var(--line); vertical-align: middle; }
+  .badge.brew { color: var(--amber-soft); border-color: rgba(230,162,60,0.35); }
+  .badge.dist { color: var(--teal); border-color: rgba(90,143,138,0.4); }
+  .drink .name { font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+  .drink .emoji { font-size: 17px; }
+  .stepper { display: flex; align-items: center; gap: 2px; }
+  .stepper button {
+    width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--text); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .15s; line-height: 1;
+  }
+  .stepper button:hover { border-color: var(--amber); color: var(--amber); }
+  .stepper button:active { transform: scale(0.9); }
+  .stepper .count { min-width: 22px; text-align: center; font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 500; }
+  .stepper .count.zero { color: var(--text-faint); }
+
+  .save-btn {
+    width: 100%; margin-top: 22px; padding: 15px;
+    background: linear-gradient(135deg, var(--amber), #cf8a2b);
+    color: #1a130a; border: none; border-radius: 13px;
+    font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 15.5px;
+    letter-spacing: 0.04em; cursor: pointer; transition: transform .15s, box-shadow .2s;
+    box-shadow: 0 10px 24px -10px rgba(230,162,60,0.5);
+  }
+  .save-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -10px rgba(230,162,60,0.6); }
+  .save-btn:active { transform: translateY(0); }
+
+  .toast {
+    text-align: center; font-family: 'Fraunces', serif; font-style: italic;
+    color: var(--amber-soft); font-size: 15px; margin-top: 15px; min-height: 22px;
+    opacity: 0; transition: opacity .3s;
+  }
+  .toast.show { opacity: 1; }
+
+  /* Chart */
+  .chart-box { position: relative; height: 320px; }
+  .empty {
+    text-align: center; padding: 50px 20px; color: var(--text-faint);
+  }
+  .empty .big { font-family: 'Fraunces', serif; font-style: italic; font-size: 20px; color: var(--text-dim); margin-bottom: 8px; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat {
+    background: linear-gradient(160deg, var(--surface), var(--bg-grain));
+    border: 1px solid var(--line); border-radius: 15px; padding: 18px 14px; text-align: center;
+    animation: rise .7s ease both;
+  }
+  .stat .num { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 600; color: var(--amber-soft); line-height: 1; letter-spacing: -0.01em; }
+  .stat .num.small { font-size: 19px; }
+  .stat .lbl { font-size: 10.5px; color: var(--text-faint); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 9px; }
+  .stat .sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+  /* History */
+  .hist-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .hist-head .card-label { margin-bottom: 0; flex: 1; }
+  .csv-btn {
+    background: var(--surface-2); border: 1px solid var(--line); color: var(--text-dim);
+    border-radius: 10px; padding: 9px 15px; font-family: inherit; font-size: 12.5px;
+    cursor: pointer; transition: all .2s; letter-spacing: 0.03em; white-space: nowrap;
+  }
+  .csv-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .hist-item {
+    display: flex; align-items: center; gap: 14px; padding: 14px 0;
+    border-bottom: 1px solid var(--line); animation: fade .5s ease both;
+  }
+  .hist-item:last-child { border-bottom: none; }
+  .hist-date { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-dim); width: 78px; flex-shrink: 0; }
+  .hist-wt { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; color: var(--text); width: 86px; flex-shrink: 0; }
+  .hist-wt span { font-size: 12px; color: var(--text-faint); font-family: 'Zen Kaku Gothic New'; font-weight: 400; }
+  .hist-drinks { flex: 1; font-size: 18px; letter-spacing: 1px; }
+  .hist-drinks .none { font-size: 12px; color: var(--teal); font-style: italic; font-family: 'Fraunces', serif; letter-spacing: 0; }
+  .hist-note { font-size: 12px; color: var(--text-faint); font-style: italic; }
+  .del {
+    background: none; border: none; color: var(--text-faint); cursor: pointer;
+    font-size: 18px; padding: 4px 8px; border-radius: 8px; transition: all .2s; flex-shrink: 0;
+  }
+  .del:hover { color: #c87a6b; background: rgba(200,122,107,0.1); }
+
+  footer { text-align: center; color: var(--text-faint); font-size: 11.5px; margin-top: 40px; letter-spacing: 0.04em; }
+  footer .heart { color: var(--amber); }
+
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 520px) {
+    .stats { grid-template-columns: 1fr 1fr; }
+    .hist-note { display: none; }
+    .hist-date { width: 64px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">No Judgement · Just The Numbers</div>
+    <h1>NIGHTCAP<span class="dot">.</span></h1>
+    <div class="tagline">怒らへん晩酌＆体重ログ</div>
+    <div class="creed">説教はせえへん。ただ、正直につけるだけ。</div>
+  </header>
+
+  <!-- 入力 -->
+  <div class="card">
+    <div class="card-label">きょうの一杯と、からだ</div>
+    <div class="row">
+      <div class="field">
+        <label for="date">日付</label>
+        <input type="date" id="date">
+      </div>
+      <div class="field">
+        <label for="weight">体重（kg）</label>
+        <input type="number" id="weight" step="0.1" placeholder="例 72.4" inputmode="decimal">
+      </div>
+    </div>
+
+    <div class="drinks-label">飲んだもの（タップで増減・無理に入れんでもええ）</div>
+    <div class="drinks" id="drinks"></div>
+
+    <div class="field" style="margin-top:20px;">
+      <label for="note">ひとことメモ（任意）</label>
+      <input type="text" id="note" placeholder="サウナ後の一杯は格別やった、とか">
+    </div>
+
+    <button class="save-btn" id="save">この日を記録する</button>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- 統計 -->
+  <div class="stats" id="stats"></div>
+
+  <!-- グラフ -->
+  <div class="card">
+    <div class="card-label">体重の流れ（7日ならし）と、晩酌</div>
+    <div class="chart-box" id="chartBox">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <!-- 履歴 -->
+  <div class="card">
+    <div class="hist-head">
+      <div class="card-label">これまでの記録</div>
+      <button class="csv-btn" id="csv">CSV書き出し</button>
+    </div>
+    <div id="history"></div>
+  </div>
+
+  <footer>
+    NIGHTCAP — データはこの端末のなかだけ（localStorage）。<span class="heart">◆</span> 怒られへん場所で、正直に。
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- 飲み物の定義（クラフトビール民向け） ----
+  const DRINK_TYPES = [
+    { key: "beer",     name: "ビール",       emoji: "🍺", cat: "brew", kcal: 200, serve: "中ジョッキ約500ml" },
+    { key: "sake",     name: "日本酒",       emoji: "🍶", cat: "brew", kcal: 190, serve: "1合 180ml" },
+    { key: "wine",     name: "ワイン",       emoji: "🍷", cat: "brew", kcal: 90,  serve: "グラス約120ml" },
+    { key: "other",    name: "その他(醸造)", emoji: "🍹", cat: "brew", kcal: 150, serve: "梅酒・紹興酒・カクテル等" },
+    { key: "highball", name: "ハイボール",   emoji: "🥃", cat: "dist", kcal: 70,  serve: "ウイスキー30ml+炭酸" },
+    { key: "shochu",   name: "焼酎",         emoji: "🫗", cat: "dist", kcal: 135, serve: "水割り/ロック 原酒約70ml" },
+    { key: "other_d",  name: "その他(蒸留)", emoji: "🍸", cat: "dist", kcal: 75,  serve: "ジン・ウォッカのソーダ割り等" }
+  ];
+  const STORE_KEY = "nightcap_entries_v1";
+
+  // ---- ストレージ（localStorage。使えん環境ではメモリに退避してクラッシュ回避） ----
+  let memFallback = null;
+  const store = {
+    load() {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return memFallback ? JSON.parse(memFallback) : [];
+      }
+    },
+    save(data) {
+      const json = JSON.stringify(data);
+      try { localStorage.setItem(STORE_KEY, json); }
+      catch (e) { memFallback = json; }
+    }
+  };
+
+  let entries = store.load();
+  let draftDrinks = {};
+  DRINK_TYPES.forEach(d => draftDrinks[d.key] = 0);
+  let chart = null;
+
+  // ---- 要素 ----
+  const $ = id => document.getElementById(id);
+  const dateEl = $("date"), weightEl = $("weight"), noteEl = $("note");
+
+  // 既定日付＝きょう
+  function today() {
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+  }
+  dateEl.value = today();
+
+  // ---- 飲み物ステッパー描画 ----
+  function renderDrinks() {
+    const box = $("drinks");
+    box.innerHTML = "";
+    DRINK_TYPES.forEach(d => {
+      const n = draftDrinks[d.key];
+      const el = document.createElement("div");
+      el.className = "drink " + d.cat + (n > 0 ? " active" : "");
+      el.innerHTML =
+        '<div class="top">' +
+          '<div class="name"><span class="emoji">' + d.emoji + '</span>' + d.name +
+            '<span class="badge ' + d.cat + '">' + (d.cat === "brew" ? "醸造" : "蒸留") + '</span></div>' +
+          '<div class="stepper">' +
+            '<button data-k="' + d.key + '" data-v="-1">−</button>' +
+            '<span class="count' + (n === 0 ? ' zero' : '') + '">' + n + '</span>' +
+            '<button data-k="' + d.key + '" data-v="1">＋</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="kcal">約 ' + d.kcal + ' kcal／杯 ・ ' + d.serve + '</div>';
+      box.appendChild(el);
+    });
+    box.querySelectorAll("button").forEach(b => {
+      b.onclick = () => {
+        const k = b.dataset.k, v = parseInt(b.dataset.v, 10);
+        draftDrinks[k] = Math.max(0, draftDrinks[k] + v);
+        renderDrinks();
+      };
+    });
+  }
+
+  // ---- 合計杯数 ----
+  const totalDrinks = dr => DRINK_TYPES.reduce((s, d) => s + (dr[d.key] || 0), 0);
+  const totalKcal = dr => DRINK_TYPES.reduce((s, d) => s + (dr[d.key] || 0) * d.kcal, 0);
+
+  // ---- 保存 ----
+  $("save").onclick = () => {
+    const date = dateEl.value;
+    const weight = parseFloat(weightEl.value);
+    if (!date) { toast("日付だけ入れてな"); return; }
+    if (isNaN(weight) || weight <= 0) { toast("体重を入れてみて（0.1kg単位でOK）"); return; }
+
+    const entry = {
+      date: date,
+      weight: Math.round(weight * 10) / 10,
+      drinks: Object.assign({}, draftDrinks),
+      note: noteEl.value.trim()
+    };
+
+    const i = entries.findIndex(e => e.date === date);
+    if (i >= 0) entries[i] = entry; else entries.push(entry);
+    entries.sort((a, b) => a.date.localeCompare(b.date));
+    store.save(entries);
+
+    // リセット（説教なし。ただ受け取るだけ）
+    DRINK_TYPES.forEach(d => draftDrinks[d.key] = 0);
+    weightEl.value = ""; noteEl.value = "";
+    renderDrinks(); renderAll();
+    toast(pickPraise(entry));
+  };
+
+  // ---- ジャッジしない一言（多く飲んでも責めへん） ----
+  function pickPraise(entry) {
+    const msgs = [
+      "記録した。それだけで上等や。",
+      "ちゃんと残せた。えらい。",
+      "正直につけられたな。",
+      "はい、控えたで。判断はあんたに任すわ。",
+      "ええ感じ。明日もまた一行。"
+    ];
+    return msgs[Math.floor(Math.random() * msgs.length)];
+  }
+  let toastTimer = null;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  // ---- 7日移動平均 ----
+  function movingAvg(sorted) {
+    return sorted.map((e, idx) => {
+      const end = new Date(e.date);
+      const start = new Date(end); start.setDate(start.getDate() - 6);
+      const win = sorted.filter(x => {
+        const d = new Date(x.date);
+        return d >= start && d <= end;
+      });
+      const avg = win.reduce((s, x) => s + x.weight, 0) / win.length;
+      return Math.round(avg * 100) / 100;
+    });
+  }
+
+  // ---- 統計（事実だけ。良し悪しは言わへん） ----
+  function renderStats() {
+    const box = $("stats");
+    if (entries.length === 0) { box.innerHTML = ""; return; }
+
+    const recorded = entries.length;
+    // 直近7件の飲酒合計
+    const last7 = entries.slice(-7);
+    const drinkSum = last7.reduce((s, e) => s + totalDrinks(e.drinks), 0);
+    const dryDays = last7.filter(e => totalDrinks(e.drinks) === 0).length;
+
+    // 体重トレンド（移動平均の最初と最後を比較）
+    let trendHtml = '<div class="num small">—</div><div class="sub">まだこれから</div>';
+    if (entries.length >= 2) {
+      const ma = movingAvg(entries);
+      const diff = Math.round((ma[ma.length - 1] - ma[0]) * 10) / 10;
+      const arrow = diff < -0.1 ? "↓" : diff > 0.1 ? "↑" : "→";
+      const sign = diff > 0 ? "+" : "";
+      trendHtml = '<div class="num small">' + arrow + " " + sign + diff + '<span style="font-size:13px;color:var(--text-faint)"> kg</span></div>' +
+                  '<div class="sub">ならし全体の動き</div>';
+    }
+
+    box.innerHTML =
+      '<div class="stat"><div class="num">' + recorded + '</div><div class="lbl">記録した日</div></div>' +
+      '<div class="stat">' + trendHtml + '<div class="lbl">体重トレンド</div></div>' +
+      '<div class="stat"><div class="num small">' + dryDays + ' / ' + last7.length + '</div><div class="sub">直近で飲まへんかった日</div><div class="lbl">休肝</div></div>';
+  }
+
+  // ---- グラフ ----
+  function renderChart() {
+    const box = $("chartBox");
+    const canvas = $("chart");
+
+    if (entries.length === 0) {
+      if (chart) { chart.destroy(); chart = null; }
+      box.innerHTML = '<div class="empty"><div class="big">まだ白紙やで</div>今夜の一杯と体重、一行つけてみよか。<br>点が増えるほど、流れが見えてくる。</div>';
+      return;
+    }
+    if (!document.getElementById("chart")) {
+      box.innerHTML = '<canvas id="chart"></canvas>';
+    }
+
+    const labels = entries.map(e => e.date.slice(5).replace("-", "/"));
+    const weights = entries.map(e => e.weight);
+    const ma = movingAvg(entries);
+    const drinkCounts = entries.map(e => totalDrinks(e.drinks));
+
+    const ctx = document.getElementById("chart").getContext("2d");
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            type: "bar", label: "杯数", data: drinkCounts, yAxisID: "yDrinks",
+            backgroundColor: "rgba(90,143,138,0.40)", borderColor: "rgba(90,143,138,0.7)",
+            borderWidth: 1, borderRadius: 4, barPercentage: 0.55, categoryPercentage: 0.7, order: 3
+          },
+          {
+            type: "line", label: "体重", data: weights, yAxisID: "yWeight",
+            borderColor: "rgba(230,162,60,0.35)", backgroundColor: "rgba(230,162,60,0.35)",
+            pointRadius: 3, pointBackgroundColor: "rgba(230,162,60,0.5)",
+            borderWidth: 0, showLine: false, order: 2
+          },
+          {
+            type: "line", label: "体重（7日ならし）", data: ma, yAxisID: "yWeight",
+            borderColor: "#e6a23c", backgroundColor: "rgba(230,162,60,0.08)",
+            borderWidth: 2.5, pointRadius: 0, tension: 0.35, fill: true, order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: "#b3a491", font: { family: "'Zen Kaku Gothic New'", size: 12 },
+              usePointStyle: true, pointStyle: "circle", padding: 16 }
+          },
+          tooltip: {
+            backgroundColor: "#221c16", borderColor: "#3a2f24", borderWidth: 1,
+            titleColor: "#f3e9da", bodyColor: "#b3a491", padding: 12, cornerRadius: 10,
+            titleFont: { family: "'Zen Kaku Gothic New'" }, bodyFont: { family: "'Zen Kaku Gothic New'" },
+            callbacks: {
+              label: c => {
+                if (c.dataset.yAxisID === "yDrinks") return " 晩酌：" + c.parsed.y + " 杯";
+                return " " + c.dataset.label + "：" + c.parsed.y + " kg";
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: "rgba(58,47,36,0.5)" }, ticks: { color: "#7d7163", font: { size: 11 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+          yWeight: {
+            position: "left", grid: { color: "rgba(58,47,36,0.5)" },
+            ticks: { color: "#e6a23c", font: { size: 11 }, callback: v => v + "kg" }
+          },
+          yDrinks: {
+            position: "right", beginAtZero: true, grid: { drawOnChartArea: false },
+            ticks: { color: "#5a8f8a", font: { size: 11 }, stepSize: 1, callback: v => v + "杯" },
+            suggestedMax: Math.max(4, Math.max.apply(null, drinkCounts) + 1)
+          }
+        }
+      }
+    });
+  }
+
+  // ---- 履歴 ----
+  function renderHistory() {
+    const box = $("history");
+    if (entries.length === 0) {
+      box.innerHTML = '<div style="color:var(--text-faint);font-size:13px;padding:8px 0;">記録がたまると、ここに並んでいくで。</div>';
+      return;
+    }
+    box.innerHTML = "";
+    entries.slice().reverse().forEach(e => {
+      const item = document.createElement("div");
+      item.className = "hist-item";
+      const dlabel = e.date.slice(5).replace("-", "/");
+      let glyphs = "";
+      DRINK_TYPES.forEach(d => { for (let i = 0; i < (e.drinks[d.key] || 0); i++) glyphs += d.emoji; });
+      const drinkHtml = glyphs ? glyphs : '<span class="none">飲まへんかった日</span>';
+      item.innerHTML =
+        '<div class="hist-date">' + dlabel + '</div>' +
+        '<div class="hist-wt">' + e.weight + '<span> kg</span></div>' +
+        '<div class="hist-drinks">' + drinkHtml + (totalDrinks(e.drinks) > 0 ? ' <span style="font-size:11px;color:var(--text-faint)">約' + totalKcal(e.drinks) + 'kcal</span>' : '') + '</div>' +
+        (e.note ? '<div class="hist-note">' + escapeHtml(e.note) + '</div>' : '') +
+        '<button class="del" data-d="' + e.date + '" title="この日を消す">×</button>';
+      box.appendChild(item);
+    });
+    box.querySelectorAll(".del").forEach(b => {
+      b.onclick = () => {
+        entries = entries.filter(e => e.date !== b.dataset.d);
+        store.save(entries); renderAll();
+      };
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // ---- CSV（Strongと揃えて後で連携できる形） ----
+  $("csv").onclick = () => {
+    if (entries.length === 0) { toast("まだ書き出すもんがないで"); return; }
+    const header = ["date", "weight_kg", "beer", "sake", "wine", "other_brew", "highball", "shochu", "other_distilled", "total_drinks", "est_kcal", "note"];
+    const rows = entries.map(e => [
+      e.date, e.weight,
+      e.drinks.beer || 0, e.drinks.sake || 0, e.drinks.wine || 0, e.drinks.other || 0,
+      e.drinks.highball || 0, e.drinks.shochu || 0, e.drinks.other_d || 0,
+      totalDrinks(e.drinks), totalKcal(e.drinks),
+      '"' + (e.note || "").replace(/"/g, '""') + '"'
+    ].join(","));
+    const csv = "\uFEFF" + [header.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "nightcap_" + today() + ".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("CSV吐いたで。Strongのデータと並べてもええな。");
+  };
+
+  // ---- 全描画 ----
+  function renderAll() { renderStats(); renderChart(); renderHistory(); }
+
+  renderDrinks();
+  renderAll();
+})();
+</script>
+</body>
+</html>
